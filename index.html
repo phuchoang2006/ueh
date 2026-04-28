@@ -353,7 +353,7 @@
           case 'browse': return <BrowseView items={items} viewItemDetail={viewItemDetail} calendarDate={calendarDate} setCalendarDate={setCalendarDate} filterType={browseFilter} setFilterType={setBrowseFilter} />;
           case 'detail': return <ItemDetail item={selectedItem} allItems={items} messages={messages} onSendMessage={handleSendMessage} goBack={() => setCurrentView('browse')} viewItemDetail={viewItemDetail} currentUser={currentUser} isLoggedIn={isLoggedIn} handleResolveItem={handleResolveItem} handleInitiateClaim={handleInitiateClaim} openPrivateChat={openPrivateChat} />;
           case 'stats': return <StatsView items={items} />;
-          case 'profile': return <ProfileView user={currentUser} items={items} messages={messages} onSendMessage={handleSendMessage} onReaction={handleReaction} isLoggedIn={isLoggedIn} setCurrentUser={setCurrentUser} db={db} appId={appId} navToChat={navToChat} setNavToChat={setNavToChat} isConfigured={true} />;
+          case 'profile': return <ProfileView user={currentUser} items={items} messages={messages} onSendMessage={handleSendMessage} onReaction={handleReaction} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} setCurrentUser={setCurrentUser} updateUser={setCurrentUser} db={db} appId={appId} navToChat={navToChat} setNavToChat={setNavToChat} isConfigured={true} />;
           default: return <HomeView setView={setCurrentView} items={items} viewItemDetail={viewItemDetail} calendarDate={calendarDate} setCalendarDate={setCalendarDate} />;
         }
       };
