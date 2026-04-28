@@ -1310,8 +1310,7 @@
             localStorage.setItem('ueh_current_user', JSON.stringify(newUserData));
             setIsLoggedIn(true);
           }
-        } catch (error) { setAuthError('Có lỗi xảy ra, vui lòng bật cho phép ghi Database trên Firebase.'); }
-      };
+} catch (error) { setAuthError('Lỗi chi tiết: ' + error.message); console.error(error); }      };
 
       const handleSaveProfile = async () => {
         try {
