@@ -242,7 +242,7 @@
           
           <button 
             onClick={() => setIsOpen(!isOpen)}
-            className={`w-16 h-16 rounded-full shadow-[0_0_15px_rgba(0,0,0,0.2)] flex items-center justify-center transition-transform hover:scale-110 border-2 border-white overflow-hidden ${isOpen ? 'bg-gray-800 text-white' : 'bg-gradient-to-tr from-teal-400 to-blue-500 animate-bounce-slow'}`}
+            className={`w-16 h-16 rounded-full shadow-[0_0_15px_rgba(0,0,0,0.2)] flex items-center justify-center transition-transform hover:scale-110 border-2 border-white overflow-hidden ${isOpen ? 'bg-gray-800 text-white' : 'bg-gradient-to-tr from-teal-400 to-blue-500'}`}
           >
             {isOpen ? <X size={28}/> : (
               <img src="https://image.pollinations.ai/prompt/cute%20capybara%20wearing%20black%20sunglasses%20smiling%20anime%20style%20avatar?width=150&height=150&nologo=true" alt="Capy Bot" className="w-full h-full object-cover"/>
@@ -277,18 +277,12 @@
           if(!isFirebaseConfigured) return; 
           try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-              try {
-                await signInWithCustomToken(auth, __initial_auth_token);
-              } catch (customTokenError) {
-                await signInAnonymously(auth);
-              }
-            } else {
-              await signInAnonymously(auth);
-            }
+              try { await signInWithCustomToken(auth, __initial_auth_token); } 
+              catch (e) { await signInAnonymously(auth); }
+            } else { await signInAnonymously(auth); }
           } catch (error) { 
-            console.error("Lỗi đăng nhập:", error); 
             if (error?.code === 'auth/admin-restricted-operation') {
-              setSystemError('CẢNH BÁO FIREBASE: Vui lòng vào Firebase Console -> Authentication -> Sign-in method -> Bật Enable cho "Anonymous" (Ẩn danh) để ứng dụng có thể tải dữ liệu.');
+              setSystemError('Vui lòng vào Firebase Console -> Authentication -> Sign-in method -> Bật Enable cho "Anonymous" (Ẩn danh).');
             }
           }
         };
@@ -490,11 +484,11 @@
 
       const viewItemDetail = (item) => { setSelectedItem(item); setCurrentView('detail'); };
 
-      // ĐIỀU CHỈNH MÀU NỀN XUỐNG 25%
+      // ĐIỀU CHỈNH MÀU NỀN
       const getBackgroundClass = () => {
         switch (currentView) {
-          case 'home': return 'bg-blue-800/25';
-          case 'browse': return browseFilter === 'found' ? 'bg-blue-800/25' : 'bg-teal-900/25';
+          case 'home': return 'bg-blue-600/30';
+          case 'browse': return 'bg-blue-900/30';
           case 'stats': return 'bg-blue-800/25';
           case 'report_lost': return 'bg-red-900/90'; 
           case 'report_found': return 'bg-blue-900/90';
@@ -507,12 +501,12 @@
       // HÌNH ẢNH NỀN THỰC TẾ TRƯỜNG ĐH & Người thật
       const getBackgroundImage = () => {
         switch (currentView) {
-          case 'home': return "url('https://image.pollinations.ai/prompt/realistic%20photography%20vietnamese%20university%20students%20in%20dark%20green%20uniform%20sitting%20on%20campus%20discussing%20studying%20chatting%20happily%20helping%20each%20other?width=1600&height=900&nologo=true')"; 
-          case 'browse': return "url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1600&q=80')"; // Cơ sở B
+          case 'home': return "url('https://image.pollinations.ai/prompt/realistic%20photography%20vietnamese%20university%20students%20sitting%20on%20green%20campus%20wearing%20turquoise%20shirts%20with%20orange%20collar%20trim%20and%20white%20or%20black%20pants%20smiling%20helping%20each%20other%20studying%20doing%20research%20project%20together?width=1600&height=900&nologo=true')"; 
+          case 'browse': return "url('https://image.pollinations.ai/prompt/realistic%20photography%20vietnamese%20university%20students%20wearing%20turquoise%20shirts%20with%20orange%20collar%20trim%20and%20white%20pants%20and%20dark%20blue%20graduation%20caps%20putting%20arms%20around%20each%20other%20holding%20graduation%20diplomas%20smiling%20joyful%20excited%20festive%20graduation%20atmosphere%20campus?width=1600&height=900&nologo=true')"; 
           case 'stats': return "url('https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1600&q=80')"; // Cơ sở N
           case 'profile': return "url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1600&q=80')"; // Sinh viên thực tế
           case 'detail': return "url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1600&q=80')"; 
-          default: return "url('https://image.pollinations.ai/prompt/realistic%20photography%20vietnamese%20university%20students%20in%20dark%20green%20uniform%20sitting%20on%20campus%20discussing%20studying%20chatting%20happily%20helping%20each%20other?width=1600&height=900&nologo=true')";
+          default: return "url('https://image.pollinations.ai/prompt/realistic%20photography%20vietnamese%20university%20students%20sitting%20on%20green%20campus%20wearing%20turquoise%20shirts%20with%20orange%20collar%20trim%20and%20white%20or%20black%20pants%20smiling%20helping%20each%20other%20studying%20doing%20research%20project%20together?width=1600&height=900&nologo=true')";
         }
       };
       
@@ -717,24 +711,27 @@
                     <h3 className="font-bold text-white flex items-center"><Clock size={18} className="mr-2 text-blue-300"/> Tình hình ngày được chọn</h3>
                     <span className="text-xs bg-white/30 px-3 py-1 rounded-full font-bold text-white shadow-inner">{formatDateString(calendarDate)}</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-4 cursor-pointer relative z-10" onClick={() => setView('browse')}>
-                    <div className="bg-orange-500/30 hover:bg-orange-500/40 transition border border-orange-400/50 p-3 rounded-xl flex items-center justify-between group">
-                      <div>
-                        <p className="text-xs text-orange-200 font-medium">Báo mất</p>
-                        <p className="text-xl sm:text-2xl font-extrabold text-white group-hover:scale-110 transition-transform origin-left">{todayLostCount}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 cursor-pointer relative z-10" onClick={() => setView('browse')}>
+                    <div className="bg-gradient-to-br from-orange-50 to-orange-100 text-orange-800 border border-orange-200 p-5 rounded-3xl shadow-xl relative overflow-hidden transition-transform hover:-translate-y-1 flex flex-col justify-center min-h-[100px] group">
+                      <div className="relative z-10">
+                        <p className="text-[11px] font-black opacity-80 mb-1 uppercase tracking-wider">Báo mất</p>
+                        <p className="text-3xl font-black drop-shadow-md">{todayLostCount}</p>
                       </div>
+                      <AlertCircle size={50} className="absolute right-[-10px] bottom-[-10px] opacity-20 text-orange-800 group-hover:scale-110 transition-transform"/>
                     </div>
-                    <div className="bg-blue-500/30 hover:bg-blue-500/40 transition border border-blue-400/50 p-3 rounded-xl flex items-center justify-between group">
-                      <div>
-                        <p className="text-xs text-blue-200 font-medium">Nhặt được</p>
-                        <p className="text-xl sm:text-2xl font-extrabold text-white group-hover:scale-110 transition-transform origin-left">{todayFoundCount}</p>
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 text-blue-800 border border-blue-200 p-5 rounded-3xl shadow-xl relative overflow-hidden transition-transform hover:-translate-y-1 flex flex-col justify-center min-h-[100px] group">
+                      <div className="relative z-10">
+                        <p className="text-[11px] font-black opacity-80 mb-1 uppercase tracking-wider">Nhặt được</p>
+                        <p className="text-3xl font-black drop-shadow-md">{todayFoundCount}</p>
                       </div>
+                      <CheckCircle size={50} className="absolute right-[-10px] bottom-[-10px] opacity-20 text-blue-800 group-hover:scale-110 transition-transform"/>
                     </div>
-                    <div className="bg-teal-500/30 hover:bg-teal-500/40 transition border border-teal-400/50 p-3 rounded-xl flex items-center justify-between group">
-                      <div>
-                        <p className="text-xs text-teal-200 font-medium">Đã giải quyết</p>
-                        <p className="text-xl sm:text-2xl font-extrabold text-white group-hover:scale-110 transition-transform origin-left">{todayResolvedCount}</p>
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 text-green-800 border border-green-200 p-5 rounded-3xl shadow-xl relative overflow-hidden transition-transform hover:-translate-y-1 flex flex-col justify-center min-h-[100px] group">
+                      <div className="relative z-10">
+                        <p className="text-[11px] font-black opacity-80 mb-1 uppercase tracking-wider">Đã giải quyết</p>
+                        <p className="text-3xl font-black drop-shadow-md">{todayResolvedCount}</p>
                       </div>
+                      <HeartHandshake size={50} className="absolute right-[-10px] bottom-[-10px] opacity-20 text-green-800 group-hover:scale-110 transition-transform"/>
                     </div>
                   </div>
                 </div>
@@ -972,7 +969,7 @@
             </div>
 
             <form onSubmit={handleSubmit} className={`p-8 space-y-8 ${!isLoggedIn ? 'opacity-30 pointer-events-none select-none' : ''}`}>
-              <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 shadow-inner">
+              <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <div className="flex items-center mb-4">
                   <Lock size={18} className="text-gray-500 mr-2" />
                   <h3 className="font-bold text-gray-800 text-lg">Thông tin liên hệ cá nhân</h3>
@@ -1199,6 +1196,13 @@
             {/* MỤC AI MATCHING DƯỚI CÙNG GIAO DIỆN TÌM KIẾM */}
             {aiMatches.length > 0 && filterType === 'all' && (
               <div className="mt-8 bg-gradient-to-r from-blue-50 to-teal-50 p-8 rounded-3xl border border-blue-200 shadow-xl relative overflow-hidden">
+                <div className="mb-[-25px] z-20 flex flex-col items-center animate-bounce-slow">
+                   <div className="bg-white px-5 py-2.5 rounded-3xl shadow-xl border border-blue-200 font-black text-blue-700 mb-3 relative">
+                      Ê người đẹp, xem tớ tìm được gì này! 👇
+                      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white rotate-45 border-b border-r border-blue-200"></div>
+                   </div>
+                   <img src="https://image.pollinations.ai/prompt/cute%20capybara%20wearing%20black%20sunglasses%20pointing%20down%20with%20both%20hands%20anime%20style?width=150&height=150&nologo=true" alt="Capy Pointing" className="w-24 h-24 object-cover rounded-full border-4 border-white shadow-2xl" />
+                </div>
                 <h3 className="font-extrabold text-blue-900 text-2xl mb-4 flex items-center justify-center relative z-10 border-b border-blue-200 pb-4 mt-6">
                   <Sparkles className="mr-3 text-yellow-500" size={32}/>
                   Khu vực Ghép nối Tương thích (AI Matching)
@@ -1455,22 +1459,6 @@
                                 </>
                               ) : msg.text}
                             </p>
-                            
-                            {/* Thả cảm xúc */}
-                            {isFirebaseConfigured && isLoggedIn && (
-                              <div className="absolute top-1/2 -translate-y-1/2 -right-28 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white p-1 rounded-full shadow-lg border border-gray-100 z-20">
-                                {['❤️', '👍', '😭', '😲'].map(emoji => (
-                                   <button key={emoji} onClick={() => onReaction(msg.id, emoji)} className="p-1 hover:scale-125 transition-transform text-base">{emoji}</button>
-                                ))}
-                              </div>
-                            )}
-                            
-                            {/* Hiển thị Cảm xúc đã thả */}
-                            {msg.reactions && msg.reactions.length > 0 && (
-                              <div className="absolute -bottom-3 right-4 bg-white px-2 py-0.5 rounded-full shadow-md text-xs border border-gray-100 flex items-center z-10">
-                                 <span className="font-bold text-gray-600">{msg.reactions.join('')} {msg.reactions.length}</span>
-                              </div>
-                            )}
                           </div>
                           <div className="text-xs text-gray-500 mt-2 ml-4 flex items-center gap-5 font-bold">
                             <button onClick={() => setReplyingTo(msg.sender)} className="hover:text-teal-600 transition-colors">Phản hồi</button>
@@ -1558,8 +1546,8 @@
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             <StatCard title="Đang báo mất" value={totalLost} color="orange" icon={<AlertCircle/>} />
-            <StatCard title="Đang nhặt được" value={totalFound} color="green" icon={<CheckCircle/>} />
-            <StatCard title="Đã Giải Quyết" value={resolved} color="blue" icon={<HeartHandshake/>} />
+            <StatCard title="Đang nhặt được" value={totalFound} color="blue" icon={<CheckCircle/>} />
+            <StatCard title="Đã Giải Quyết" value={resolved} color="green" icon={<HeartHandshake/>} />
           </div>
 
           <div className="grid md:grid-cols-2 gap-10">
