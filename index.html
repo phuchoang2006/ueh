@@ -22,7 +22,7 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-    .bg-sticker-sparkle { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="%2334d399" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path></svg>'); }
+    .bg-sticker-sparkle { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="%2334d399" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1-1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path></svg>'); }
   </style>
 
   <script type="importmap">
@@ -47,7 +47,7 @@
     import { 
       Search, MapPin, Clock, Tag, MessageSquare, User, BarChart2, 
       Home, AlertCircle, CheckCircle, Image as ImageIcon, 
-      Send, ChevronRight, ChevronLeft, Filter, X, Phone, Mail, ShieldAlert, History, MessageCircle, FileText, Trophy, Lock, Camera, Calendar, HeartHandshake, Edit3, Save, CheckSquare, Zap, Megaphone, Heart, Sparkles, Bot, Smile, ThumbsUp
+      Send, ChevronRight, ChevronLeft, Filter, X, Phone, Mail, ShieldAlert, History, MessageCircle, FileText, Trophy, Lock, Camera, Calendar, HeartHandshake, Edit3, Save, CheckSquare, Zap, Megaphone, Heart, Sparkles, Bot, Smile, ThumbsUp, Trash2
     } from 'lucide-react';
     
     import { initializeApp } from 'firebase/app';
@@ -92,7 +92,6 @@
       return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     };
 
-    // Hàm matching AI mới: Gộp toàn bộ string và tính % trùng lặp
     const calculateSimilarity = (str1, str2) => {
       if (!str1 || !str2) return 0;
       const s1 = removeAccents(str1).replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
@@ -243,7 +242,7 @@
           
           <button 
             onClick={() => setIsOpen(!isOpen)}
-            className={`w-16 h-16 rounded-full shadow-[0_0_15px_rgba(0,0,0,0.2)] flex items-center justify-center transition-transform hover:scale-110 border-2 border-white overflow-hidden ${isOpen ? 'bg-gray-800 text-white' : 'bg-gradient-to-tr from-teal-400 to-blue-500'}`}
+            className={`w-16 h-16 rounded-full shadow-[0_0_15px_rgba(0,0,0,0.2)] flex items-center justify-center transition-transform hover:scale-110 border-2 border-white overflow-hidden ${isOpen ? 'bg-gray-800 text-white' : 'bg-gradient-to-tr from-teal-400 to-blue-500 animate-bounce-slow'}`}
           >
             {isOpen ? <X size={28}/> : (
               <img src="https://image.pollinations.ai/prompt/cute%20capybara%20wearing%20black%20sunglasses%20smiling%20anime%20style%20avatar?width=150&height=150&nologo=true" alt="Capy Bot" className="w-full h-full object-cover"/>
@@ -303,9 +302,7 @@
       useEffect(() => {
         if (!firebaseUser && isFirebaseConfigured) return;
 
-        if(!isFirebaseConfigured) {
-           setItems([]); setMessages([]);
-        } else {
+        if(isFirebaseConfigured) {
            const itemsRef = collection(db, 'artifacts', appId, 'public', 'data', 'ueh_items');
            const unsubItems = onSnapshot(itemsRef, (snapshot) => {
              const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -331,13 +328,15 @@
       }, []);
 
       const handleAddItem = async (newItem) => {
-        if (!isFirebaseConfigured) { alert("Vui lòng cấu hình Firebase trong Source Code!"); return; }
+        if (!isFirebaseConfigured) return;
         const finalImage = newItem.image || getCategoryImage(newItem.category);
         const itemData = { 
           ...newItem, image: finalImage, status: 'open', 
           author: currentUser.name, authorEmail: currentUser.email, 
+          authorAvatar: currentUser.avatar || null, 
           authorStudentId: currentUser.studentId, authorClass: currentUser.classInfo,
-          timestamp: Date.now() 
+          timestamp: Date.now(),
+          reactions: [] // Cảm xúc
         };
         try {
           await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ueh_items'), itemData);
@@ -345,7 +344,7 @@
         } catch (error) { console.error(error); }
       };
 
-      const handleSendMessage = async (threadId, itemId, text, itemTitle, itemAuthor) => {
+      const handleSendMessage = async (threadId, itemId, text, itemTitle, itemAuthor, imageUrl = null) => {
         if (!isFirebaseConfigured) return;
         const senderName = currentUser ? currentUser.name : 'Sinh viên ẩn danh';
         const senderEmail = currentUser ? currentUser.email : 'Ẩn danh';
@@ -353,23 +352,43 @@
           threadId: threadId || null, 
           itemId, itemTitle: itemTitle || '', itemAuthor: itemAuthor || '',
           sender: senderName, senderEmail: senderEmail,
-          text, timestamp: Date.now(), reactions: [] 
+          text, imageUrl, timestamp: Date.now()
         };
         try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ueh_messages'), newMessage); } 
         catch (error) { console.error(error); }
       };
 
-      const handleReaction = async (msgId, emoji) => {
+      // Thả cảm xúc vào Bài Đăng
+      const handleItemReaction = async (itemId, emoji) => {
+        if (!isLoggedIn) {
+           alert("Vui lòng đăng nhập để thả cảm xúc!"); return;
+        }
         try {
-          const msgRef = doc(db, 'artifacts', appId, 'public', 'data', 'ueh_messages', msgId);
-          const msgSnap = await getDoc(msgRef);
-          if (msgSnap.exists()) {
-             let currentReactions = msgSnap.data().reactions || [];
-             currentReactions.push(emoji);
-             await updateDoc(msgRef, { reactions: currentReactions });
+          const itemRef = doc(db, 'artifacts', appId, 'public', 'data', 'ueh_items', itemId);
+          const itemSnap = await getDoc(itemRef);
+          if (itemSnap.exists()) {
+             let currentReactions = itemSnap.data().reactions || [];
+             const reactionStr = `${currentUser.email}_${emoji}`;
+             // Nếu có rồi thì bỏ, chưa có thì thêm
+             if (currentReactions.includes(reactionStr)) {
+                currentReactions = currentReactions.filter(r => r !== reactionStr);
+             } else {
+                currentReactions.push(reactionStr);
+             }
+             await updateDoc(itemRef, { reactions: currentReactions });
           }
         } catch (error) { console.error(error); }
       };
+
+      // Trash Logic
+      const handleTrashItem = async (itemId) => {
+        if(window.confirm("Bạn muốn chuyển bài viết này vào thùng rác? Bài đăng sẽ không còn hiển thị trên bảng tin.")) {
+           try {
+              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ueh_items', itemId), { status: 'trashed' });
+              setCurrentView('profile');
+           } catch(error) { console.error(error); }
+        }
+      }
 
       const handleInitiateClaim = async (item, isLost) => {
         if (!isLoggedIn) { alert("Vui lòng đăng nhập ở mục Cá nhân để xác nhận!"); return; }
@@ -380,6 +399,12 @@
             : "Bạn xác nhận đây là đồ của bạn?\nHệ thống sẽ tạo một đoạn chat và gửi thông báo đến người nhặt được đồ.";
             
         if (window.confirm(confirmMsg)) {
+            if (!isLost) {
+               await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ueh_items', item.id), {
+                   claimedBy: currentUser.email
+               });
+            }
+
             const emails = [currentUser.email, item.authorEmail].sort();
             const threadId = `${item.id}_${emails[0]}_${emails[1]}`;
             
@@ -395,6 +420,65 @@
         }
       };
 
+      const handleConfirmClaim = async (itemObj) => {
+        if (!isLoggedIn) return;
+        if (itemObj.finderResolved) {
+            await finalizeResolve(itemObj);
+        } else {
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ueh_items', itemObj.id), {
+                claimConfirmed: true
+            });
+            alert("Đã xác nhận chắc chắn! Vui lòng chờ người nhặt được chốt giải quyết.");
+        }
+      };
+
+      const handleResolveItem = async (itemObj) => {
+        if (itemObj.type === 'found') {
+            if (itemObj.claimConfirmed) {
+                await finalizeResolve(itemObj);
+            } else {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ueh_items', itemObj.id), {
+                    finderResolved: true
+                });
+                alert("Đã ghi nhận yêu cầu giải quyết. Vui lòng chờ người nhận xác nhận chắc chắn để hoàn tất!");
+            }
+        } else {
+            await finalizeResolve(itemObj);
+        }
+      };
+
+      const finalizeResolve = async (itemObj) => {
+        try {
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ueh_items', itemObj.id), { 
+             status: 'resolved', resolvedBy: currentUser.name, resolvedAt: Date.now() 
+          });
+          
+          const targetType = itemObj.type === 'lost' ? 'found' : 'lost';
+          const counterparts = items.filter(i => i.type === targetType && i.status !== 'resolved' && i.status !== 'trashed' && i.id !== itemObj.id);
+          
+          let matchedCount = 0;
+          for (const cp of counterparts) {
+            let filterScore = 0;
+            if (cp.category === itemObj.category) filterScore++;
+            if (cp.campus === itemObj.campus) filterScore++;
+            if (cp.timeFrame === itemObj.timeFrame) filterScore++;
+            
+            const text1 = [itemObj.title, itemObj.category, itemObj.campus, itemObj.specificLocation, itemObj.timeFrame, itemObj.description].join(" ");
+            const text2 = [cp.title, cp.category, cp.campus, cp.specificLocation, cp.timeFrame, cp.description].join(" ");
+            const txtMatchPercent = calculateSimilarity(text1, text2);
+            
+            if (filterScore >= 2 && txtMatchPercent >= 70) {
+               await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ueh_items', cp.id), { 
+                 status: 'resolved', resolvedAuto: true, resolvedMatchedWith: itemObj.id, resolvedAt: Date.now() 
+               });
+               matchedCount++;
+            }
+          }
+          alert(`Đã đánh dấu giải quyết thành công! Đã ẩn bài khỏi tìm kiếm.${matchedCount > 0 ? `\nAI đã tự động đồng bộ gỡ ${matchedCount} bài đăng tương ứng khác.` : ''}`);
+          setCurrentView('home');
+        } catch (error) { console.error("Lỗi:", error); }
+      };
+
       const openPrivateChat = (item) => {
         if (!isLoggedIn) { alert("Vui lòng đăng nhập để gửi tin nhắn cá nhân!"); return; }
         if (currentUser.email === item.authorEmail) { alert("Đây là bài đăng của bạn!"); return; }
@@ -404,57 +488,36 @@
         setCurrentView('profile');
       };
 
-      const handleResolveItem = async (itemObj) => {
-        try {
-          const itemRef = doc(db, 'artifacts', appId, 'public', 'data', 'ueh_items', itemObj.id);
-          await updateDoc(itemRef, { status: 'resolved', resolvedBy: currentUser.name, resolvedAt: Date.now() });
-          
-          const targetType = itemObj.type === 'lost' ? 'found' : 'lost';
-          const counterparts = items.filter(i => i.type === targetType && i.status !== 'resolved' && i.id !== itemObj.id);
-          
-          let matchedCount = 0;
-          for (const cp of counterparts) {
-            const text1 = [itemObj.title, itemObj.category, itemObj.campus, itemObj.specificLocation, itemObj.timeFrame, itemObj.description].join(" ");
-            const text2 = [cp.title, cp.category, cp.campus, cp.specificLocation, cp.timeFrame, cp.description].join(" ");
-            const txtMatchPercent = calculateSimilarity(text1, text2);
-            
-            if (txtMatchPercent >= 70) {
-               await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ueh_items', cp.id), { 
-                 status: 'resolved', resolvedAuto: true, resolvedMatchedWith: itemObj.id, resolvedAt: Date.now() 
-               });
-               matchedCount++;
-            }
-          }
-          alert(`Đã đánh dấu giải quyết thành công! Đã ẩn bài khỏi tìm kiếm.${matchedCount > 0 ? `\nHệ thống cũng đã tự động gỡ ${matchedCount} bài đăng đối ứng vì có độ trùng khớp cao.` : ''}`);
-          setCurrentView('home');
-        } catch (error) { console.error("Lỗi:", error); }
-      };
-
       const viewItemDetail = (item) => { setSelectedItem(item); setCurrentView('detail'); };
 
+      // ĐIỀU CHỈNH MÀU NỀN XUỐNG 25%
       const getBackgroundClass = () => {
         switch (currentView) {
-          case 'home': return 'bg-blue-900/25';
-          case 'browse': return browseFilter === 'found' ? 'bg-blue-900/25' : 'bg-teal-900/25';
-          case 'stats': return 'bg-red-900/25';
+          case 'home': return 'bg-blue-800/25';
+          case 'browse': return browseFilter === 'found' ? 'bg-blue-800/25' : 'bg-teal-900/25';
+          case 'stats': return 'bg-blue-800/25';
           case 'report_lost': return 'bg-red-900/90'; 
           case 'report_found': return 'bg-blue-900/90';
-          case 'detail': return selectedItem?.type === 'found' ? 'bg-blue-900/25' : 'bg-teal-900/25';
-          case 'profile': return 'bg-blue-900/25';
-          default: return 'bg-gray-900/25';
+          case 'detail': return selectedItem?.type === 'found' ? 'bg-blue-800/25' : 'bg-teal-900/25';
+          case 'profile': return 'bg-blue-800/25';
+          default: return 'bg-blue-800/25';
         }
       };
       
+      // HÌNH ẢNH NỀN THỰC TẾ TRƯỜNG ĐH & Người thật
       const getBackgroundImage = () => {
         switch (currentView) {
-          case 'home': return "url('https://image.pollinations.ai/prompt/anime%20style%20illustration%20vietnamese%20university%20students%20in%20dark%20green%20uniform%20helping%20each%20other%20find%20lost%20items%20campus?width=1600&height=900&nologo=true')"; 
-          case 'browse': return "url('https://image.pollinations.ai/prompt/anime%20style%20illustration%20vietnamese%20university%20students%20in%20dark%20green%20uniform%20searching%20for%20lost%20items%20with%20magnifying%20glass%20campus?width=1600&height=900&nologo=true')"; 
-          case 'stats': return "url('https://image.pollinations.ai/prompt/anime%20style%20illustration%20vietnamese%20university%20students%20in%20dark%20green%20uniform%20looking%20at%20information%20board%20happy%20campus?width=1600&height=900&nologo=true')"; 
-          case 'profile': return "url('https://image.pollinations.ai/prompt/anime%20style%20illustration%20vietnamese%20university%20student%20in%20dark%20green%20uniform%20holding%20a%20found%20wallet%20smiling%20happy%20campus?width=1600&height=900&nologo=true')"; 
-          case 'detail': return "url('https://image.pollinations.ai/prompt/anime%20style%20illustration%20vietnamese%20university%20students%20in%20dark%20green%20uniform%20helping%20each%20other%20find%20lost%20items%20campus?width=1600&height=900&nologo=true')"; 
-          default: return "url('https://image.pollinations.ai/prompt/anime%20style%20illustration%20vietnamese%20university%20students%20in%20dark%20green%20uniform%20helping%20each%20other%20find%20lost%20items%20campus?width=1600&height=900&nologo=true')";
+          case 'home': return "url('https://image.pollinations.ai/prompt/realistic%20photography%20vietnamese%20university%20students%20in%20dark%20green%20uniform%20sitting%20on%20campus%20discussing%20studying%20chatting%20happily%20helping%20each%20other?width=1600&height=900&nologo=true')"; 
+          case 'browse': return "url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1600&q=80')"; // Cơ sở B
+          case 'stats': return "url('https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1600&q=80')"; // Cơ sở N
+          case 'profile': return "url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1600&q=80')"; // Sinh viên thực tế
+          case 'detail': return "url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1600&q=80')"; 
+          default: return "url('https://image.pollinations.ai/prompt/realistic%20photography%20vietnamese%20university%20students%20in%20dark%20green%20uniform%20sitting%20on%20campus%20discussing%20studying%20chatting%20happily%20helping%20each%20other?width=1600&height=900&nologo=true')";
         }
       };
+      
+      // Ảnh màn hình Auth
+      const authBackgroundUrl = "url('https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=1600&q=80')";
 
       const updateUser = (updates) => { setCurrentUser(prev => ({ ...prev, ...updates })); };
 
@@ -464,17 +527,6 @@
             <ShieldAlert size={80} className="mb-6 text-yellow-400 animate-pulse" />
             <h1 className="text-3xl font-black mb-4">LỖI CẤU HÌNH FIREBASE</h1>
             <p className="text-lg mb-6 bg-red-800 p-4 rounded-xl border border-red-500 max-w-2xl">{systemError}</p>
-            <div className="bg-black/30 p-6 rounded-2xl text-left max-w-2xl text-gray-200">
-               <h3 className="font-bold text-xl text-white mb-2">Cách khắc phục (Mất 1 phút):</h3>
-               <ol className="list-decimal list-inside space-y-2">
-                 <li>Vào <a href="https://console.firebase.google.com/" className="text-blue-300 underline" target="_blank">Firebase Console</a>.</li>
-                 <li>Chọn dự án <strong>uehreconnect</strong>.</li>
-                 <li>Vào mục <strong>Authentication</strong>.</li>
-                 <li>Chọn tab <strong>Sign-in method</strong>.</li>
-                 <li>Bật nút Enable cho <strong>Anonymous (Ẩn danh)</strong>.</li>
-                 <li>Nhấn Lưu và tải lại trang web này.</li>
-               </ol>
-            </div>
           </div>
         );
       }
@@ -522,9 +574,9 @@
           case 'report_lost': return <ReportForm type="lost" onSubmit={handleAddItem} onCancel={() => setCurrentView('home')} currentUser={currentUser} isLoggedIn={isLoggedIn} setView={setCurrentView} />;
           case 'report_found': return <ReportForm type="found" onSubmit={handleAddItem} onCancel={() => setCurrentView('home')} currentUser={currentUser} isLoggedIn={isLoggedIn} setView={setCurrentView} />;
           case 'browse': return <BrowseView items={items} viewItemDetail={viewItemDetail} calendarDate={calendarDate} setCalendarDate={setCalendarDate} filterType={browseFilter} setFilterType={setBrowseFilter} />;
-          case 'detail': return <ItemDetail item={selectedItem} allItems={items} messages={messages} onSendMessage={handleSendMessage} goBack={() => setCurrentView('browse')} viewItemDetail={viewItemDetail} currentUser={currentUser} isLoggedIn={isLoggedIn} handleResolveItem={handleResolveItem} handleInitiateClaim={handleInitiateClaim} openPrivateChat={openPrivateChat} />;
+          case 'detail': return <ItemDetail item={selectedItem} allItems={items} messages={messages} onSendMessage={handleSendMessage} onReaction={handleItemReaction} onTrashItem={handleTrashItem} goBack={() => setCurrentView('browse')} viewItemDetail={viewItemDetail} currentUser={currentUser} isLoggedIn={isLoggedIn} handleResolveItem={handleResolveItem} handleInitiateClaim={handleInitiateClaim} openPrivateChat={openPrivateChat} handleConfirmClaim={handleConfirmClaim} />;
           case 'stats': return <StatsView items={items} />;
-          case 'profile': return <ProfileView user={currentUser} items={items} messages={messages} onSendMessage={handleSendMessage} onReaction={handleReaction} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} setCurrentUser={setCurrentUser} updateUser={updateUser} db={db} appId={appId} firebaseUser={firebaseUser} isConfigured={isFirebaseConfigured} navToChat={navToChat} setNavToChat={setNavToChat} viewItemDetail={viewItemDetail} />;
+          case 'profile': return <ProfileView user={currentUser} items={items} messages={messages} onSendMessage={handleSendMessage} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} setCurrentUser={setCurrentUser} updateUser={updateUser} db={db} appId={appId} firebaseUser={firebaseUser} isConfigured={isFirebaseConfigured} navToChat={navToChat} setNavToChat={setNavToChat} viewItemDetail={viewItemDetail} authBackgroundUrl={authBackgroundUrl} />;
           default: return <HomeView setView={setCurrentView} items={items} viewItemDetail={viewItemDetail} calendarDate={calendarDate} setCalendarDate={setCalendarDate} />;
         }
       };
@@ -532,6 +584,7 @@
       return (
         <div className={`min-h-screen font-sans text-gray-800 flex flex-col relative transition-colors duration-700`}>
           <div className={`fixed inset-0 z-[-1] transition-colors duration-700 ${getBackgroundClass()}`}></div>
+          {/* Tăng hiển thị ảnh nền lên 85%, Saturate 150 để sặc sỡ hơn */}
           <div className="fixed inset-0 z-[-2] opacity-85 saturate-150 pointer-events-none transition-all duration-1000" style={{backgroundImage: getBackgroundImage(), backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed'}}></div>
           
           <div className="w-full bg-blue-100/90 backdrop-blur border-b border-blue-200 py-1.5 overflow-hidden flex items-center z-50">
@@ -597,7 +650,7 @@
             {renderContent()}
           </main>
 
-          <ChatbotAI items={items} />
+          <ChatbotAI items={items.filter(i=>i.status!=='trashed')} />
 
           <footer className="bg-white/90 backdrop-blur-sm border-t border-gray-200 py-6 mt-auto z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
             <div className="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
@@ -633,13 +686,14 @@
       const startOfDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate(), 0, 0, 0).getTime();
       const endOfDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate(), 23, 59, 59).getTime();
 
-      const activeItems = items.filter(i => i.status !== 'resolved');
+      const activeItems = items.filter(i => i.status !== 'resolved' && i.status !== 'trashed');
       const selectedDayItems = activeItems.filter(i => i.timestamp >= startOfDay && i.timestamp <= endOfDay);
       const recentLost = selectedDayItems.filter(i => i.type === 'lost').slice(0, 5); 
       const recentFound = selectedDayItems.filter(i => i.type === 'found').slice(0, 5); 
 
       const todayLostCount = selectedDayItems.filter(i => i.type === 'lost').length;
       const todayFoundCount = selectedDayItems.filter(i => i.type === 'found').length;
+      const todayResolvedCount = items.filter(i => i.status === 'resolved' && i.resolvedAt >= startOfDay && i.resolvedAt <= endOfDay).length;
 
       return (
         <div className="space-y-12 animate-fade-in relative">
@@ -663,20 +717,24 @@
                     <h3 className="font-bold text-white flex items-center"><Clock size={18} className="mr-2 text-blue-300"/> Tình hình ngày được chọn</h3>
                     <span className="text-xs bg-white/30 px-3 py-1 rounded-full font-bold text-white shadow-inner">{formatDateString(calendarDate)}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 cursor-pointer relative z-10" onClick={() => setView('browse')}>
+                  <div className="grid grid-cols-3 gap-4 cursor-pointer relative z-10" onClick={() => setView('browse')}>
                     <div className="bg-orange-500/30 hover:bg-orange-500/40 transition border border-orange-400/50 p-3 rounded-xl flex items-center justify-between group">
                       <div>
                         <p className="text-xs text-orange-200 font-medium">Báo mất</p>
-                        <p className="text-2xl font-extrabold text-white group-hover:scale-110 transition-transform origin-left">{todayLostCount}</p>
+                        <p className="text-xl sm:text-2xl font-extrabold text-white group-hover:scale-110 transition-transform origin-left">{todayLostCount}</p>
                       </div>
-                      <AlertCircle size={28} className="text-orange-400 opacity-70"/>
                     </div>
-                    <div className="bg-green-500/30 hover:bg-green-500/40 transition border border-green-400/50 p-3 rounded-xl flex items-center justify-between group">
+                    <div className="bg-blue-500/30 hover:bg-blue-500/40 transition border border-blue-400/50 p-3 rounded-xl flex items-center justify-between group">
                       <div>
-                        <p className="text-xs text-green-200 font-medium">Nhặt được</p>
-                        <p className="text-2xl font-extrabold text-white group-hover:scale-110 transition-transform origin-left">{todayFoundCount}</p>
+                        <p className="text-xs text-blue-200 font-medium">Nhặt được</p>
+                        <p className="text-xl sm:text-2xl font-extrabold text-white group-hover:scale-110 transition-transform origin-left">{todayFoundCount}</p>
                       </div>
-                      <CheckCircle size={28} className="text-green-400 opacity-70"/>
+                    </div>
+                    <div className="bg-teal-500/30 hover:bg-teal-500/40 transition border border-teal-400/50 p-3 rounded-xl flex items-center justify-between group">
+                      <div>
+                        <p className="text-xs text-teal-200 font-medium">Đã giải quyết</p>
+                        <p className="text-xl sm:text-2xl font-extrabold text-white group-hover:scale-110 transition-transform origin-left">{todayResolvedCount}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -942,7 +1000,6 @@
                 <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center"><Tag size={18} className="mr-2 text-blue-500" /> Chi tiết tài sản</h3>
                 
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-2xl border border-blue-200 mb-6 shadow-sm relative overflow-hidden">
-                  <Sparkles className="absolute top-2 right-2 text-blue-300 opacity-50" size={32} />
                   <label className="block text-sm font-extrabold text-blue-800 mb-1">✨ Điền nhanh bằng AI</label>
                   <div className="flex gap-3 mt-2 relative z-10">
                     <textarea rows="2" placeholder="Ví dụ: Sáng nay rớt ví ở căn tin..." className="w-full p-3 border rounded-xl outline-none text-sm focus:ring-2 bg-white" value={aiInput} onChange={e => setAiInput(e.target.value)}></textarea>
@@ -1014,6 +1071,7 @@
       const [searchTerm, setSearchTerm] = useState('');
 
       const systemCount = items.filter(i => {
+        if (i.status === 'trashed') return false; // Không đếm thùng rác
         if (filterType === 'all') return true;
         return i.type === filterType;
       }).length;
@@ -1021,7 +1079,7 @@
       const startOfDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate(), 0, 0, 0).getTime();
       const endOfDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate(), 23, 59, 59).getTime();
 
-      const activeItems = items.filter(i => i.status !== 'resolved');
+      const activeItems = items.filter(i => i.status !== 'resolved' && i.status !== 'trashed');
 
       const filteredItems = activeItems.filter(item => {
         if (item.timestamp < startOfDay || item.timestamp > endOfDay) return false;
@@ -1033,7 +1091,7 @@
         return true;
       }).sort((a,b) => b.timestamp - a.timestamp);
 
-      // KHU VỰC TƯƠNG THÍCH AI (Gộp toàn bộ chuỗi)
+      // KHU VỰC TƯƠNG THÍCH AI
       const aiMatches = [];
       const lostItemsForMatch = activeItems.filter(i => i.type === 'lost');
       const foundItemsForMatch = activeItems.filter(i => i.type === 'found');
@@ -1043,7 +1101,13 @@
         const matches = foundItemsForMatch.filter(found => {
           const foundText = [found.title, found.category, found.campus, found.specificLocation, found.timeFrame, found.description].join(" ");
           const textSimilarity = calculateSimilarity(lostText, foundText);
-          return textSimilarity >= 70;
+          
+          let filterScore = 0;
+          if (lost.category === found.category) filterScore++;
+          if (lost.campus === found.campus) filterScore++;
+          if (lost.timeFrame === found.timeFrame) filterScore++;
+          
+          return filterScore >= 2 && textSimilarity >= 70;
         });
 
         if (matches.length > 0) {
@@ -1133,45 +1197,32 @@
             )}
 
             {/* MỤC AI MATCHING DƯỚI CÙNG GIAO DIỆN TÌM KIẾM */}
-            {aiMatches.length > 0 && (
-              <div className="mt-12 relative flex flex-col items-center animate-fade-in">
-                {/* Mascot Capybara Pointing */}
-                <div className="mb-[-25px] z-20 flex flex-col items-center animate-bounce-slow">
-                   <div className="bg-white px-5 py-2.5 rounded-3xl shadow-xl border border-blue-200 font-black text-blue-700 mb-3 relative">
-                      Ê người đẹp, xem tớ tìm được gì này! 👇
-                      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white rotate-45 border-b border-r border-blue-200"></div>
-                   </div>
-                   <img src="https://image.pollinations.ai/prompt/cute%20capybara%20wearing%20black%20sunglasses%20pointing%20down%20with%20both%20hands%20anime%20style?width=150&height=150&nologo=true" alt="Capy Pointing" className="w-24 h-24 object-cover rounded-full border-4 border-white shadow-2xl" />
-                </div>
-
-                <div className="w-full bg-gradient-to-r from-blue-50 to-teal-50 p-8 pt-12 rounded-3xl border-2 border-blue-200 shadow-xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-sticker-sparkle opacity-20 pointer-events-none -mt-10 -mr-10"></div>
-                  <h3 className="font-extrabold text-blue-900 text-2xl mb-4 flex items-center justify-center relative z-10 border-b border-blue-200 pb-4">
-                    <Sparkles className="mr-3 text-yellow-500" size={32}/>
-                    Khu vực Ghép nối Tương thích (AI Matching)
-                  </h3>
-                  <p className="text-gray-600 font-medium mb-6 relative z-10 text-center">Hệ thống AI tự động tổng hợp và ghép nối các bài đăng có độ giống nhau cao (Khớp từ 70% tổng thể thông tin).</p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-                    {aiMatches.map((match, idx) => (
-                      <div key={idx} className="bg-white p-5 rounded-3xl shadow-md border border-blue-100 hover:shadow-xl transition-all group">
-                        <div className="bg-orange-50 border border-orange-100 p-3 rounded-2xl cursor-pointer hover:bg-orange-100 transition" onClick={() => viewItemDetail(match.lostItem)}>
-                          <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded text-orange-700 bg-orange-200 mb-2 inline-block">Báo mất</span>
-                          <h4 className="font-bold text-gray-900 text-sm line-clamp-1">{match.lostItem.title}</h4>
-                        </div>
-                        <div className="flex justify-center my-3 relative">
-                          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-dashed border-gray-300"></div></div>
-                          <div className="relative bg-white px-2"><HeartHandshake size={24} className="text-teal-500 group-hover:scale-125 transition-transform"/></div>
-                        </div>
-                        {match.foundItems.map(fItem => (
-                          <div key={fItem.id} className="bg-green-50 border border-green-100 p-3 rounded-2xl cursor-pointer hover:bg-green-100 transition mt-2" onClick={() => viewItemDetail(fItem)}>
-                            <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded text-green-700 bg-green-200 mb-2 inline-block">Nhặt được</span>
-                            <h4 className="font-bold text-gray-900 text-sm line-clamp-1">{fItem.title}</h4>
-                          </div>
-                        ))}
+            {aiMatches.length > 0 && filterType === 'all' && (
+              <div className="mt-8 bg-gradient-to-r from-blue-50 to-teal-50 p-8 rounded-3xl border border-blue-200 shadow-xl relative overflow-hidden">
+                <h3 className="font-extrabold text-blue-900 text-2xl mb-4 flex items-center justify-center relative z-10 border-b border-blue-200 pb-4 mt-6">
+                  <Sparkles className="mr-3 text-yellow-500" size={32}/>
+                  Khu vực Ghép nối Tương thích (AI Matching)
+                </h3>
+                <p className="text-gray-600 font-medium mb-6 relative z-10 text-center">Hệ thống AI tự động tổng hợp và ghép nối các bài đăng có độ giống nhau cao (Khớp 2/3 bộ lọc & 70% nội dung).</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+                  {aiMatches.map((match, idx) => (
+                    <div key={idx} className="bg-white p-5 rounded-3xl shadow-md border border-blue-100 hover:shadow-xl transition-all group">
+                      <div className="bg-orange-50 border border-orange-100 p-3 rounded-2xl cursor-pointer hover:bg-orange-100 transition" onClick={() => viewItemDetail(match.lostItem)}>
+                        <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded text-orange-700 bg-orange-200 mb-2 inline-block">Báo mất</span>
+                        <h4 className="font-bold text-gray-900 text-sm line-clamp-1">{match.lostItem.title}</h4>
                       </div>
-                    ))}
-                  </div>
+                      <div className="flex justify-center my-3 relative">
+                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-dashed border-gray-300"></div></div>
+                        <div className="relative bg-white px-2"><HeartHandshake size={24} className="text-teal-500 group-hover:scale-125 transition-transform"/></div>
+                      </div>
+                      {match.foundItems.map(fItem => (
+                        <div key={fItem.id} className="bg-green-50 border border-green-100 p-3 rounded-2xl cursor-pointer hover:bg-green-100 transition mt-2" onClick={() => viewItemDetail(fItem)}>
+                          <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded text-green-700 bg-green-200 mb-2 inline-block">Nhặt được</span>
+                          <h4 className="font-bold text-gray-900 text-sm line-clamp-1">{fItem.title}</h4>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -1211,7 +1262,7 @@
     // ==========================================
     // 4. ITEM DETAIL & PUBLIC CHAT
     // ==========================================
-    const ItemDetail = ({ item, allItems, messages, onSendMessage, goBack, viewItemDetail, currentUser, isLoggedIn, handleResolveItem, handleInitiateClaim, openPrivateChat }) => {
+    const ItemDetail = ({ item, allItems, messages, onSendMessage, onReaction, onTrashItem, goBack, viewItemDetail, currentUser, isLoggedIn, handleResolveItem, handleInitiateClaim, openPrivateChat, handleConfirmClaim }) => {
       const [chatInput, setChatInput] = useState('');
       const [replyingTo, setReplyingTo] = useState(null); 
       
@@ -1230,11 +1281,35 @@
         }
       };
 
+      // Xử lý đếm Reactions cho Bài đăng
+      const reactionTypes = [
+        { emoji: '❤️', icon: 'https://image.pollinations.ai/prompt/cute%20capybara%20holding%20a%20pink%20heart%20anime%20style?width=50&height=50&nologo=true', label: 'Yêu thích' },
+        { emoji: '👍', icon: 'https://image.pollinations.ai/prompt/cute%20capybara%20wearing%20sunglasses%20giving%20a%20thumbs%20up%20anime%20style?width=50&height=50&nologo=true', label: 'Like' },
+        { emoji: '😭', icon: 'https://image.pollinations.ai/prompt/cute%20capybara%20wearing%20sunglasses%20crying%20sad%20anime%20style?width=50&height=50&nologo=true', label: 'Buồn' },
+        { emoji: '😲', icon: 'https://image.pollinations.ai/prompt/cute%20capybara%20wearing%20sunglasses%20surprised%20wow%20anime%20style?width=50&height=50&nologo=true', label: 'Wow' }
+      ];
+
+      const itemReactions = item.reactions || [];
+      const reactionCounts = {};
+      reactionTypes.forEach(rt => reactionCounts[rt.emoji] = 0);
+      itemReactions.forEach(r => {
+         const emoji = r.split('_')[1];
+         if(reactionCounts[emoji] !== undefined) reactionCounts[emoji]++;
+      });
+
       return (
         <div className="max-w-6xl mx-auto space-y-6 animate-fade-in pb-20 md:pb-0 relative z-10">
-          <button onClick={goBack} className="text-white hover:text-teal-200 flex items-center text-sm font-extrabold transition-colors bg-white/10 border border-white/20 py-2.5 px-5 rounded-xl shadow-lg backdrop-blur-md w-fit">
-            <ChevronRight size={18} className="rotate-180 mr-2" /> Quay lại
-          </button>
+          <div className="flex justify-between items-center">
+            <button onClick={goBack} className="text-white hover:text-teal-200 flex items-center text-sm font-extrabold transition-colors bg-white/10 border border-white/20 py-2.5 px-5 rounded-xl shadow-lg backdrop-blur-md w-fit">
+              <ChevronRight size={18} className="rotate-180 mr-2" /> Quay lại
+            </button>
+            {/* Nút Xóa bài dành cho chủ sở hữu đang hiển thị open */}
+            {currentUser && currentUser.email === item.authorEmail && item.status === 'open' && (
+               <button onClick={() => onTrashItem(item.id)} className="text-sm font-bold px-4 py-2.5 rounded-xl text-white shadow-md transition hover:-translate-y-0.5 flex items-center bg-red-600 hover:bg-red-700">
+                 <Trash2 size={16} className="mr-2"/> Xóa bài (Vào thùng rác)
+               </button>
+            )}
+          </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
@@ -1250,19 +1325,41 @@
                     {item.status === 'resolved' ? (
                       <span className="bg-gray-600 text-white text-xs px-4 py-2 rounded-full font-bold shadow-md flex items-center"><CheckSquare size={16} className="mr-1.5"/> Đã được giải quyết/Gỡ xuống</span>
                     ) : (
-                      currentUser && currentUser.email === item.authorEmail ? (
-                        <button onClick={() => {if(window.confirm("Đánh dấu bài này là đã giải quyết? Hệ thống sẽ ẩn nó đi và tự động gỡ bài đối ứng nếu có trùng khớp.")){handleResolveItem(item)}}} className="text-sm font-bold px-4 py-2 rounded-xl text-white shadow-md transition hover:-translate-y-0.5 flex items-center bg-gray-800 hover:bg-gray-900">
-                           <CheckSquare size={16} className="mr-2"/> Đánh dấu đã giải quyết
-                        </button>
-                      ) : (
-                        hasClaimed && !isLost ? (
-                           <button onClick={() => {if(window.confirm("Bạn chắc chắn món đồ này là của bạn chứ? Việc xác nhận sẽ đánh dấu giải quyết bài đăng này.")){handleResolveItem(item)}}} className={`text-sm font-bold px-4 py-2 rounded-xl text-white shadow-md transition hover:-translate-y-0.5 flex items-center bg-green-600 hover:bg-green-700`}>
-                             <CheckCircle size={16} className="mr-2"/> Bạn chắc chắn món đồ này là của bạn chứ? (Xác nhận)
-                           </button>
+                      isLost ? (
+                        currentUser && currentUser.email === item.authorEmail ? (
+                          <button onClick={() => {if(window.confirm("Đánh dấu bài này là đã giải quyết? Hệ thống sẽ ẩn nó đi và tự động gỡ bài đối ứng nếu có trùng khớp.")){handleResolveItem(item)}}} className="text-sm font-bold px-4 py-2 rounded-xl text-white shadow-md transition hover:-translate-y-0.5 flex items-center bg-gray-800 hover:bg-gray-900">
+                             <CheckSquare size={16} className="mr-2"/> Đánh dấu đã giải quyết (Gỡ bài)
+                          </button>
                         ) : (
-                           <button onClick={() => handleInitiateClaim(item, isLost)} className={`text-sm font-bold px-4 py-2 rounded-xl text-white shadow-md transition hover:-translate-y-0.5 flex items-center ${isLost ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-500 hover:bg-orange-600'}`}>
-                             <Zap size={16} className="mr-2"/> {isLost ? 'Tôi đã nhặt được món này' : 'Nhận là đồ của mình'}
-                           </button>
+                          <button onClick={() => handleInitiateClaim(item, true)} className={`text-sm font-bold px-4 py-2 rounded-xl text-white shadow-md transition hover:-translate-y-0.5 flex items-center bg-blue-600 hover:bg-blue-700`}>
+                             <Zap size={16} className="mr-2"/> Tôi đã nhặt được món này
+                          </button>
+                        )
+                      ) : (
+                        currentUser && currentUser.email === item.authorEmail ? (
+                           item.finderResolved ? (
+                              <span className="text-sm font-bold px-4 py-2 bg-yellow-500 rounded-xl text-white shadow-md flex items-center">Đang chờ người nhận xác nhận...</span>
+                           ) : (
+                              <button onClick={() => handleResolveItem(item)} className="text-sm font-bold px-4 py-2 rounded-xl text-white shadow-md transition hover:-translate-y-0.5 flex items-center bg-gray-800 hover:bg-gray-900">
+                                 <CheckSquare size={16} className="mr-2"/> Đánh dấu đã giải quyết
+                              </button>
+                           )
+                        ) : (
+                           item.claimedBy === currentUser?.email ? (
+                              item.claimConfirmed ? (
+                                 <span className="text-sm font-bold px-4 py-2 bg-yellow-500 rounded-xl text-white shadow-md flex items-center">Đang chờ người nhặt chốt giải quyết...</span>
+                              ) : (
+                                 <button onClick={() => handleConfirmClaim(item)} className="text-sm font-bold px-4 py-2 bg-green-600 hover:bg-green-700 rounded-xl text-white shadow-md flex items-center">
+                                    <CheckCircle size={16} className="mr-2"/> Chắc chắn đó chính là món đồ của tôi chứ? (Xác nhận)
+                                 </button>
+                              )
+                           ) : item.claimedBy ? (
+                              <span className="text-sm font-bold px-4 py-2 bg-gray-400 rounded-xl text-white shadow-md flex items-center">Đã có người nhận</span>
+                           ) : (
+                              <button onClick={() => handleInitiateClaim(item, false)} className="text-sm font-bold px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-xl text-white shadow-md flex items-center">
+                                 <Zap size={16} className="mr-2"/> Nhận là đồ của mình
+                              </button>
+                           )
                         )
                       )
                     )}
@@ -1275,19 +1372,26 @@
                           <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                         </div>
                       </div>
-                      <div className="w-full md:w-3/5">
+                      <div className="w-full md:w-3/5 flex flex-col">
                         <h1 className="text-3xl font-black text-gray-900 mb-6">{item.title}</h1>
                         <div className="grid grid-cols-1 gap-y-4">
-                          <div onClick={() => openPrivateChat(item)} className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex flex-col sm:flex-row gap-4 hover:shadow-md hover:border-blue-300 transition cursor-pointer group relative">
+                          <div onClick={() => openPrivateChat(item)} className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center gap-4 hover:shadow-md hover:border-blue-300 transition cursor-pointer group relative">
                              <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition"><MessageCircle className="text-blue-500" size={20}/></div>
-                             <div className="flex-1">
-                               <p className="text-xs text-blue-600 font-bold uppercase mb-1 flex items-center"><User size={14} className="mr-1"/> Người đăng</p>
-                               <p className="text-base font-extrabold text-blue-900">{item.reporterName || item.author}</p>
-                             </div>
-                             <div className="w-px bg-blue-200 hidden sm:block"></div>
-                             <div className="flex-1">
-                               <p className="text-xs text-blue-600 font-bold uppercase mb-1 flex items-center"><Phone size={14} className="mr-1"/> Liên hệ</p>
-                               <p className="text-base font-extrabold text-blue-900">{item.reporterPhone || 'Không cung cấp'}</p>
+                             
+                             <div className="flex-1 flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-4">
+                               <div className="flex-1">
+                                 <p className="text-xs text-blue-600 font-bold uppercase mb-1 flex items-center justify-center sm:justify-start"><User size={14} className="mr-1"/> Người đăng</p>
+                                 <p className="text-base font-extrabold text-blue-900">{item.reporterName || item.author}</p>
+                               </div>
+
+                               <div className="w-16 h-16 rounded-full border-2 border-white shadow-md overflow-hidden bg-gray-200 flex-shrink-0 flex items-center justify-center">
+                                  {item.authorAvatar ? <img src={item.authorAvatar} className="w-full h-full object-cover"/> : <User className="text-gray-400" size={32}/>}
+                               </div>
+                               
+                               <div className="flex-1 text-center sm:text-right">
+                                 <p className="text-xs text-blue-600 font-bold uppercase mb-1 flex items-center justify-center sm:justify-end"><Phone size={14} className="mr-1"/> Liên hệ</p>
+                                 <p className="text-base font-extrabold text-blue-900">{item.reporterPhone || 'Không cung cấp'}</p>
+                               </div>
                              </div>
                           </div>
                         </div>
@@ -1305,12 +1409,25 @@
                       <h4 className="text-base font-extrabold text-gray-800 mb-3 flex items-center"><FileText size={20} className="mr-2 text-gray-500"/>Mô tả chi tiết:</h4>
                       <p className="text-gray-700 text-base whitespace-pre-line leading-relaxed font-medium">{item.description}</p>
                     </div>
+
+                    {/* KHU VỰC THẢ CẢM XÚC BÀI ĐĂNG (Bằng Capybara) */}
+                    <div className="flex gap-4 mt-6 p-4 bg-gray-50 rounded-2xl border border-gray-100 flex-wrap justify-center">
+                      <span className="w-full block text-center text-xs font-bold text-gray-400 mb-2">Thả cảm xúc vào bài viết:</span>
+                      {reactionTypes.map(rt => {
+                         const hasReacted = currentUser && itemReactions.includes(`${currentUser.email}_${rt.emoji}`);
+                         return (
+                           <button key={rt.emoji} onClick={() => onReaction(item.id, rt.emoji)} className={`flex items-center gap-2 p-2 rounded-xl transition-all ${hasReacted ? 'bg-blue-100 border-blue-300' : 'hover:bg-gray-200 border-transparent'} border`}>
+                             <img src={rt.icon} alt={rt.label} className="w-8 h-8 rounded-full shadow-sm object-cover" />
+                             <span className="font-bold text-gray-700">{reactionCounts[rt.emoji]}</span>
+                           </button>
+                         )
+                      })}
+                    </div>
                  </div>
               </div>
 
               {/* Chat Công khai */}
               <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 relative overflow-hidden">
-                <Sparkles className="absolute top-5 right-5 text-teal-100 opacity-50" size={60} />
                 <h3 className="font-extrabold text-2xl mb-6 flex items-center border-b border-gray-100 pb-4 text-gray-900 relative z-10">
                   <MessageCircle size={26} className="mr-3 text-teal-600"/> Bình luận công khai
                 </h3>
@@ -1327,8 +1444,8 @@
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-600 to-blue-700 flex items-center justify-center text-white font-bold text-base flex-shrink-0 shadow-lg border-2 border-white">
                           {msg.sender?.charAt(0) || 'U'}
                         </div>
-                        <div className="flex-grow">
-                          <div className="bg-gray-100 rounded-3xl px-5 py-3 inline-block max-w-[95%] border border-gray-200 shadow-sm">
+                        <div className="flex-grow group">
+                          <div className="bg-gray-100 rounded-3xl px-5 py-3 inline-block max-w-[95%] border border-gray-200 shadow-sm relative">
                             <span className="font-extrabold text-[14px] text-gray-900 block mb-0.5">{msg.sender}</span>
                             <p className="text-[15px] text-gray-800 whitespace-pre-line">
                               {msg.text.startsWith('@') ? (
@@ -1338,6 +1455,22 @@
                                 </>
                               ) : msg.text}
                             </p>
+                            
+                            {/* Thả cảm xúc */}
+                            {isFirebaseConfigured && isLoggedIn && (
+                              <div className="absolute top-1/2 -translate-y-1/2 -right-28 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white p-1 rounded-full shadow-lg border border-gray-100 z-20">
+                                {['❤️', '👍', '😭', '😲'].map(emoji => (
+                                   <button key={emoji} onClick={() => onReaction(msg.id, emoji)} className="p-1 hover:scale-125 transition-transform text-base">{emoji}</button>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Hiển thị Cảm xúc đã thả */}
+                            {msg.reactions && msg.reactions.length > 0 && (
+                              <div className="absolute -bottom-3 right-4 bg-white px-2 py-0.5 rounded-full shadow-md text-xs border border-gray-100 flex items-center z-10">
+                                 <span className="font-bold text-gray-600">{msg.reactions.join('')} {msg.reactions.length}</span>
+                              </div>
+                            )}
                           </div>
                           <div className="text-xs text-gray-500 mt-2 ml-4 flex items-center gap-5 font-bold">
                             <button onClick={() => setReplyingTo(msg.sender)} className="hover:text-teal-600 transition-colors">Phản hồi</button>
@@ -1356,8 +1489,8 @@
                       <button onClick={() => setReplyingTo(null)} className="ml-2 hover:text-red-500"><X size={14}/></button>
                     </div>
                   )}
-                  <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center text-white font-bold text-base flex-shrink-0 shadow-lg mt-1 border-2 border-white">
-                    {currentUser ? currentUser.name?.charAt(0) : 'U'}
+                  <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center text-white font-bold text-base flex-shrink-0 shadow-lg mt-1 border-2 border-white overflow-hidden">
+                    {currentUser?.avatar ? <img src={currentUser.avatar} className="w-full h-full object-cover"/> : currentUser?.name?.charAt(0) || 'U'}
                   </div>
                   <div className={`flex-grow flex flex-col bg-white border-2 rounded-3xl overflow-hidden transition-all shadow-md ${replyingTo ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200 focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-100'}`}>
                     <textarea 
@@ -1398,11 +1531,24 @@
     // 5. STATS VIEW
     // ==========================================
     const StatsView = ({ items }) => {
-      const totalLost = items.filter(i => i.type === 'lost' && i.status !== 'resolved').length;
-      const totalFound = items.filter(i => i.type === 'found' && i.status !== 'resolved').length;
-      const resolved = items.filter(i => i.status === 'resolved').length;
-      const total = items.length;
+      // Chỉ đếm những bài KHÔNG PHẢI trong thùng rác
+      const validItems = items.filter(i => i.status !== 'trashed');
+      const totalLost = validItems.filter(i => i.type === 'lost' && i.status !== 'resolved').length;
+      const totalFound = validItems.filter(i => i.type === 'found' && i.status !== 'resolved').length;
+      const resolved = validItems.filter(i => i.status === 'resolved').length;
+      const total = validItems.length;
       
+      const foundResolvedItems = validItems.filter(i => i.type === 'found' && i.status === 'resolved');
+      const userStats = {};
+      foundResolvedItems.forEach(item => {
+         if(item.authorEmail) {
+            if(!userStats[item.authorEmail]) userStats[item.authorEmail] = { count: 0, name: item.author, classInfo: item.authorClass, studentId: item.authorStudentId, avatar: item.authorAvatar };
+            userStats[item.authorEmail].count += 1;
+         }
+      });
+      const topUsers = Object.values(userStats).sort((a,b) => b.count - a.count);
+      const topUser = topUsers.length > 0 ? topUsers[0] : null;
+
       return (
         <div className="max-w-6xl mx-auto space-y-10 animate-fade-in relative z-10">
           <div className="text-center mb-12 bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 shadow-2xl relative overflow-hidden">
@@ -1417,11 +1563,11 @@
           </div>
 
           <div className="grid md:grid-cols-2 gap-10">
-            <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-10">
-              <h3 className="font-black text-2xl mb-8 flex items-center text-gray-900 border-b border-gray-100 pb-4"><BarChart2 className="mr-3 text-red-600" size={28}/> Tỉ lệ theo loại đồ vật</h3>
-              <div className="space-y-6">
+            <div className="bg-white/95 backdrop-blur rounded-3xl shadow-2xl border border-gray-100 p-10 relative overflow-hidden">
+              <h3 className="font-black text-2xl mb-8 flex items-center text-gray-900 border-b border-gray-100 pb-4 relative z-10"><BarChart2 className="mr-3 text-red-600" size={28}/> Tỉ lệ theo loại đồ vật</h3>
+              <div className="space-y-6 relative z-10">
                 {CATEGORIES.map(cat => {
-                  const count = items.filter(i => i.category === cat).length;
+                  const count = validItems.filter(i => i.category === cat).length;
                   const percent = total > 0 ? Math.round((count / total) * 100) : 0;
                   if (count === 0) return null;
                   return (
@@ -1440,13 +1586,32 @@
             </div>
 
             <div className="bg-gradient-to-br from-red-50 to-orange-50 p-10 rounded-3xl shadow-2xl border border-red-200 relative overflow-hidden">
-              <Trophy size={250} className="absolute top-0 right-0 opacity-10 text-red-700 -mr-10 -mt-10" />
               <div className="relative z-10">
                 <h3 className="font-black text-3xl mb-3 flex items-center text-red-900"><Trophy className="mr-4 text-yellow-500" size={32}/> Bảng Vàng Vinh Danh</h3>
-                <p className="text-base text-red-800 mb-8 font-bold">Sinh viên có nhiều đóng góp giải quyết đồ vật nhất</p>
-                <div className="bg-white/80 backdrop-blur p-6 rounded-2xl shadow-xl text-center border-2 border-dashed border-red-200">
-                  <p className="text-red-600 font-bold">Bảng vàng sẽ hiển thị khi có dữ liệu thật.</p>
-                </div>
+                <p className="text-base text-red-800 mb-8 font-bold">Sinh viên có nhiều đóng góp trả đồ thành công nhất</p>
+                
+                {topUser ? (
+                  <div className="bg-white/90 backdrop-blur p-6 rounded-2xl shadow-xl border border-red-100 flex items-center space-x-6 hover:scale-[1.02] transition-transform">
+                    <div className="relative">
+                      <div className="w-24 h-24 bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 rounded-full flex items-center justify-center border-4 border-white shadow-xl overflow-hidden">
+                        {topUser.avatar ? <img src={topUser.avatar} className="w-full h-full object-cover"/> : <User size={40} className="text-white" />}
+                      </div>
+                      <div className="absolute -bottom-2 -right-2 bg-red-600 text-white text-xs font-black px-3 py-1.5 rounded-full border-2 border-white shadow-md">TOP 1</div>
+                    </div>
+                    <div>
+                      <h4 className="text-2xl font-black text-gray-900">{topUser.name}</h4>
+                      <p className="text-sm text-gray-600 font-bold mt-1">MSSV: {topUser.studentId || 'N/A'}</p>
+                      <p className="text-sm text-gray-600 font-bold">Lớp: {topUser.classInfo || 'N/A'}</p>
+                      <div className="mt-3 inline-flex items-center bg-green-100 text-green-800 px-3 py-1.5 rounded-xl text-sm font-black border border-green-200 shadow-sm">
+                        <CheckCircle size={16} className="mr-2"/> Đã trả: {topUser.count} món
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white/80 backdrop-blur p-6 rounded-2xl shadow-xl text-center border-2 border-dashed border-red-200">
+                    <p className="text-red-600 font-bold">Bảng vàng sẽ hiển thị khi có dữ liệu giải quyết thành công.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1475,18 +1640,21 @@
     // ==========================================
     // 6. PROFILE VIEW
     // ==========================================
-    const ProfileView = ({ user, items, messages, onSendMessage, onReaction, isLoggedIn, setIsLoggedIn, setCurrentUser, updateUser, db, appId, firebaseUser, isConfigured, navToChat, setNavToChat, viewItemDetail }) => {
+    const ProfileView = ({ user, items, messages, onSendMessage, isLoggedIn, setIsLoggedIn, setCurrentUser, updateUser, db, appId, firebaseUser, isConfigured, navToChat, setNavToChat, viewItemDetail, authBackgroundUrl }) => {
       const [activeTab, setActiveTab] = useState('info'); 
       const [activeChat, setActiveChat] = useState(null); 
       const [chatInput, setChatInput] = useState('');
+      const [chatImagePreview, setChatImagePreview] = useState(null);
 
       const [isEditingProfile, setIsEditingProfile] = useState(false);
       const [editData, setEditData] = useState({});
 
       const myItems = items.filter(i => user && i.authorEmail === user.email);
+      const historyItems = myItems.filter(i => i.status !== 'trashed'); // Lịch sử không hiện bài rác
+      const trashItems = myItems.filter(i => i.status === 'trashed'); // Mục thùng rác
       
       const myInvolvedItems = items.filter(item => {
-        if(!user) return false;
+        if(!user || item.status === 'trashed') return false;
         const isAuthor = item.authorEmail === user.email;
         const hasThread = messages.some(m => m.itemId === item.id && m.threadId && m.threadId.includes(user.email));
         return (isAuthor && messages.some(m=>m.itemId===item.id && m.threadId)) || hasThread;
@@ -1538,7 +1706,7 @@
             localStorage.setItem('ueh_current_user', JSON.stringify(newUserData));
             setIsLoggedIn(true);
           }
-        } catch (error) { setAuthError('Có lỗi xảy ra, vui lòng bật cho phép ghi Database trên Firebase.'); }
+        } catch (error) { setAuthError('Có lỗi xảy ra, vui lòng kiểm tra Firebase.'); }
       };
 
       const handleSaveProfile = async () => {
@@ -1571,6 +1739,23 @@
         }
       };
 
+      const handleChatImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => setChatImagePreview(reader.result);
+          reader.readAsDataURL(file);
+        }
+      };
+
+      const submitPrivateMessage = () => {
+        if(chatInput.trim() || chatImagePreview) {
+            onSendMessage(activeChat.threadId, activeChat.item.id, chatInput, activeChat.item.title, activeChat.item.author, chatImagePreview);
+            setChatInput('');
+            setChatImagePreview(null);
+        }
+      };
+
       const handleReportSubmit = (e) => {
         e.preventDefault();
         if(reportFormData.details.trim() === '') { alert("Vui lòng nhập chi tiết khiếu nại."); return; }
@@ -1580,8 +1765,9 @@
 
       if (!isLoggedIn) {
         return (
-          <div className="max-w-xl mx-auto bg-white p-10 rounded-3xl shadow-2xl border border-gray-100 animate-fade-in mt-10 relative z-10">
-            <div className="text-center mb-8">
+          <div className="max-w-xl mx-auto bg-white/95 backdrop-blur p-10 rounded-3xl shadow-2xl border border-gray-100 animate-fade-in mt-10 relative z-10">
+            <div className="absolute inset-0 z-[-1] opacity-30 pointer-events-none rounded-3xl overflow-hidden" style={{backgroundImage: authBackgroundUrl, backgroundSize: 'cover'}}></div>
+            <div className="text-center mb-8 relative z-10">
                <div className="bg-blue-100 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-5 border-2 border-blue-200 shadow-inner">
                  <User size={40} className="text-blue-600" />
                </div>
@@ -1590,12 +1776,12 @@
             </div>
 
             {authError && (
-              <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-xl mb-6 text-sm font-bold flex items-start shadow-sm">
+              <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-xl mb-6 text-sm font-bold flex items-start shadow-sm relative z-10">
                 <AlertCircle size={20} className="mr-3 flex-shrink-0 mt-0.5"/> <div>{authError}</div>
               </div>
             )}
 
-            <form onSubmit={handleAuth} className="space-y-4">
+            <form onSubmit={handleAuth} className="space-y-4 relative z-10">
               {!isLoginMode && (
                 <div className="grid grid-cols-2 gap-4">
                    <div>
@@ -1638,7 +1824,7 @@
                 {isLoginMode ? 'Đăng Nhập' : 'Hoàn Tất Đăng Ký'}
               </button>
             </form>
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center relative z-10">
                <button onClick={() => {setIsLoginMode(!isLoginMode); setAuthError('');}} className="text-sm font-bold text-blue-600 hover:underline">
                  {isLoginMode ? 'Chưa có tài khoản? Đăng ký người dùng mới' : 'Đã có tài khoản? Đăng nhập ngay'}
                </button>
@@ -1667,8 +1853,9 @@
 
             <div className="bg-white/95 backdrop-blur rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col p-2">
               <ProfileTabBtn active={activeTab === 'info'} onClick={() => {setActiveTab('info'); setIsEditingProfile(false);}} icon={<User size={20}/>} label="Thông tin cá nhân" />
-              <ProfileTabBtn active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<History size={20}/>} label={`Lịch sử hoạt động (${myItems.length})`} />
+              <ProfileTabBtn active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<History size={20}/>} label={`Lịch sử hoạt động (${historyItems.length})`} />
               <ProfileTabBtn active={activeTab === 'messages'} onClick={() => setActiveTab('messages')} icon={<MessageCircle size={20}/>} label="Tin nhắn cá nhân & Thông báo" badge={myInvolvedItems.length > 0 ? myInvolvedItems.length : null} />
+              <ProfileTabBtn active={activeTab === 'trash'} onClick={() => setActiveTab('trash')} icon={<Trash2 size={20}/>} label={`Thùng rác (${trashItems.length})`} />
               <ProfileTabBtn active={activeTab === 'report'} onClick={() => setActiveTab('report')} icon={<ShieldAlert size={20}/>} label="Hỗ trợ & Khiếu nại" />
             </div>
           </div>
@@ -1748,9 +1935,9 @@
               {activeTab === 'history' && (
                 <div className="animate-fade-in space-y-6">
                   <h3 className="font-black text-3xl text-gray-900 border-b-2 border-gray-100 pb-5 flex items-center"><History className="mr-3 text-blue-600" size={32}/> Lịch sử hoạt động</h3>
-                  {myItems.length > 0 ? (
+                  {historyItems.length > 0 ? (
                     <div className="space-y-5">
-                      {myItems.map(item => (
+                      {historyItems.map(item => (
                         <div key={item.id} onClick={() => viewItemDetail(item)} className="p-5 rounded-3xl border border-gray-200 hover:border-blue-400 cursor-pointer transition-colors bg-gray-50 flex flex-col sm:flex-row justify-between sm:items-center gap-5 shadow-sm hover:shadow-md">
                           <div className="flex items-center gap-5">
                             <img src={item.image || "https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=100&q=80"} alt="" className="w-20 h-20 rounded-2xl object-cover border-2 border-white shadow-sm"/>
@@ -1772,6 +1959,35 @@
                     <div className="text-center py-16 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
                       <History size={80} className="mx-auto text-gray-300 mb-5"/>
                       <p className="text-gray-500 font-bold text-lg">Bạn chưa có bài đăng nào trong lịch sử.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'trash' && (
+                <div className="animate-fade-in space-y-6">
+                  <h3 className="font-black text-3xl text-gray-900 border-b-2 border-gray-100 pb-5 flex items-center"><Trash2 className="mr-3 text-red-600" size={32}/> Thùng rác</h3>
+                  {trashItems.length > 0 ? (
+                    <div className="space-y-5">
+                      {trashItems.map(item => (
+                        <div key={item.id} className="p-5 rounded-3xl border border-red-200 bg-red-50 flex flex-col sm:flex-row justify-between sm:items-center gap-5 shadow-sm opacity-70">
+                          <div className="flex items-center gap-5">
+                            <img src={item.image} alt="" className="w-20 h-20 rounded-2xl object-cover border-2 border-white shadow-sm grayscale"/>
+                            <div>
+                              <div className="flex items-center space-x-3 mb-2">
+                                <span className="text-[10px] uppercase font-black px-2.5 py-1 rounded-md shadow-sm border bg-red-200 text-red-800 border-red-300">Đã xóa</span>
+                                <span className="font-extrabold text-gray-900 text-xl line-through">{item.title}</span>
+                              </div>
+                              <p className="text-sm text-gray-500 font-bold">{item.date} • {item.campus}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-16 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                      <Trash2 size={80} className="mx-auto text-gray-300 mb-5"/>
+                      <p className="text-gray-500 font-bold text-lg">Thùng rác trống.</p>
                     </div>
                   )}
                 </div>
@@ -1800,7 +2016,10 @@
                                   <div className="flex-grow min-w-0">
                                     <h4 className="font-extrabold text-gray-900 truncate text-base">{otherPerson}</h4>
                                     <p className="text-xs text-indigo-600 font-bold mb-1">Về: {item.title}</p>
-                                    <p className="text-sm text-gray-600 truncate font-medium">{lastMsg.sender === user.name ? 'Bạn: ' : ''}{lastMsg.text}</p>
+                                    <p className="text-sm text-gray-600 truncate font-medium">
+                                      {lastMsg.sender === user.name ? 'Bạn: ' : ''}
+                                      {lastMsg.imageUrl ? '[Hình ảnh]' : lastMsg.text}
+                                    </p>
                                   </div>
                                   <ChevronRight className="text-gray-300" />
                                 </div>
@@ -1828,36 +2047,35 @@
                        </div>
                        
                        <div className="flex-grow p-6 space-y-6 overflow-y-auto custom-scrollbar bg-gray-50 relative">
-                         <div className="absolute inset-0 bg-sticker-cloud opacity-[0.03] pointer-events-none"></div>
-                         
                          {messages.filter(m => m.threadId === activeChat.threadId).map(msg => {
                            const isMe = msg.senderEmail === user.email;
                            return (
                              <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group relative`}>
                                {!isMe && <span className="text-[10px] font-extrabold text-gray-500 ml-2 mb-1">{msg.sender}</span>}
                                <div className={`px-5 py-3 rounded-3xl max-w-[80%] font-medium shadow-sm relative ${isMe ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-sm'}`}>
-                                 <span className="whitespace-pre-line leading-relaxed">{msg.text}</span>
+                                 {msg.imageUrl && <img src={msg.imageUrl} className="w-full max-w-[200px] rounded-xl mb-2" />}
+                                 {msg.text && <span className="whitespace-pre-line leading-relaxed">{msg.text}</span>}
                                </div>
                                <span className="text-[10px] font-bold text-gray-400 mt-1 mx-2">{timeAgo(msg.timestamp)}</span>
-                               
-                               <div className={`absolute top-2 ${isMe ? '-left-10' : '-right-10'} opacity-0 group-hover:opacity-100 transition-opacity flex gap-1`}>
-                                 <button onClick={() => onReaction(msg.id, '❤️')} className="p-1.5 bg-white rounded-full shadow-md hover:scale-110 transition"><Heart size={16} className="text-red-500"/></button>
-                                 <button onClick={() => onReaction(msg.id, '👍')} className="p-1.5 bg-white rounded-full shadow-md hover:scale-110 transition"><ThumbsUp size={16} className="text-blue-500"/></button>
-                               </div>
-                               
-                               {msg.reactions && msg.reactions.length > 0 && (
-                                 <div className={`absolute -bottom-3 ${isMe ? 'right-4' : 'left-4'} bg-white px-2 py-0.5 rounded-full shadow-md text-xs border border-gray-100 flex items-center z-10`}>
-                                    <span className="font-bold ml-1 text-gray-600">{msg.reactions.join(' ')}</span>
-                                 </div>
-                               )}
                              </div>
                            )
                          })}
                        </div>
 
+                       {chatImagePreview && (
+                          <div className="px-4 pt-4 pb-2 bg-gray-50 border-t border-gray-100 relative">
+                             <img src={chatImagePreview} className="h-16 rounded-xl border border-gray-200 shadow-sm" />
+                             <button onClick={() => setChatImagePreview(null)} className="absolute top-2 right-4 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"><X size={12}/></button>
+                          </div>
+                       )}
+
                        <div className="p-4 bg-white border-t border-gray-100 flex items-center gap-3 z-10">
-                         <input type="text" placeholder="Nhập tin nhắn..." className="flex-grow bg-gray-100 p-3.5 rounded-full outline-none font-medium px-5 focus:ring-2 focus:ring-indigo-100 transition" value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyPress={e => {if(e.key==='Enter' && chatInput) { onSendMessage(activeChat.threadId, activeChat.item.id, chatInput, activeChat.item.title, activeChat.item.author); setChatInput('');}}} />
-                         <button onClick={() => { if(chatInput) {onSendMessage(activeChat.threadId, activeChat.item.id, chatInput, activeChat.item.title, activeChat.item.author); setChatInput('')} }} className="bg-indigo-600 text-white p-3.5 rounded-full shadow-md hover:bg-indigo-700 hover:scale-105 transition"><Send size={20}/></button>
+                         <label className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-full transition cursor-pointer">
+                            <ImageIcon size={24}/>
+                            <input type="file" className="hidden" accept="image/*" onChange={handleChatImageUpload} />
+                         </label>
+                         <input type="text" placeholder="Nhập tin nhắn..." className="flex-grow bg-gray-100 p-3.5 rounded-full outline-none font-medium px-5 focus:ring-2 focus:ring-indigo-100 transition" value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyPress={e => {if(e.key==='Enter') { e.preventDefault(); submitPrivateMessage(); }}} />
+                         <button onClick={submitPrivateMessage} className="bg-indigo-600 text-white p-3.5 rounded-full shadow-md hover:bg-indigo-700 hover:scale-105 transition"><Send size={20}/></button>
                        </div>
                     </div>
                   )}
